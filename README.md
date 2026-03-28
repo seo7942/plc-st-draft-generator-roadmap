@@ -1,58 +1,51 @@
-# PLC ST Draft Generator Roadmap
+# PLC ST Draft Generator
 
-엑셀 IO 맵과 사양서 텍스트를 입력으로 받아  
-IEC 61131-3 Structured Text(ST) 초안을 자동 생성하는 범용 엔진의 로드맵 및 아키텍처 설계 문서입니다. :contentReference[oaicite:1]{index=1}
-
----
-
-## 한 줄 소개
-
-**IO 맵 + 사양서 → IR → Rule Engine → ST Generator** 흐름으로 PLC Structured Text 초안을 생성하기 위한 범용 엔진 설계 프로젝트입니다. :contentReference[oaicite:2]{index=2}
+엑셀/CSV 기반 IO 맵과 사양서 텍스트를 입력으로 받아  
+IEC 61131-3 Structured Text(ST) 초안을 생성하는 Python 기반 PLC 코드 생성 실험 프로젝트입니다.
 
 ---
 
-## 프로젝트 목적
+## Overview
 
-이 프로젝트의 목표는 PLC 엔지니어가 반복적으로 작성하는  
-상태 전이, 인터락, 타이머, 알람, 안전 규칙 코드를 자동 생성 가능한 구조로 바꾸는 것입니다.
+이 프로젝트는 PLC 제어 로직 초안 작성을 보조하기 위한 개인 개발 프로젝트입니다.
 
-단순 템플릿 치환이 아니라,  
-입력 데이터를 내부 중간 표현(IR)으로 바꾼 뒤 Rule Engine을 통해 ST 코드 초안을 생성하는 구조를 목표로 설계했습니다. :contentReference[oaicite:3]{index=3}
+입력 데이터(IO 맵, 사양서 텍스트)를 정규화한 뒤,  
+내부 데이터 구조를 기반으로 Structured Text(ST) 초안을 생성하는 흐름을 다룹니다.
 
----
+주요 목적은 다음과 같습니다.
 
-## 설계 대상
-
-입력:
-- 엑셀/CSV 형태의 IO 맵
-- 설비 사양서 텍스트
-
-출력:
-- IEC 61131-3 Structured Text(ST) 초안
-- 검증용 중간 결과(JSON/IR)
-- 테스트/검증 시나리오
-
-적용 대상:
-- GX Works3
-- TIA Portal
-- Codesys
-- TwinCAT 등 벤더 확장 가능 구조 지향 :contentReference[oaicite:4]{index=4}
+- 비정형 입력 데이터를 일정한 구조로 정리
+- PLC 로직 초안 생성을 위한 데이터 변환 파이프라인 구성
+- 검증 가능한 중간 표현과 출력 구조 실험
+- 향후 다양한 산업/벤더 환경에 적용 가능한 형태 검토
 
 ---
 
-## 전체 아키텍처
+## Scope
+
+현재 공개 저장소 범위는 아래와 같습니다.
+
+- 입력 데이터 로드
+- IO 정보 정규화
+- 내부 데이터 구조(IR) 구성
+- 기본 검증 로직
+- 범용 Structured Text(ST) 초안 생성
+
+이 저장소는 **개념 검증 및 구조 설계 중심의 공개용 버전**입니다.
+
+---
+
+## Pipeline
 
 ```text
 IO Map / Spec Text
         ↓
-Input Ingestion
+Input Parsing
         ↓
-Intermediate Representation (IR)
+Normalization
         ↓
-Rule Engine
+Intermediate Representation
         ↓
-ST Draft Generator
+Validation
         ↓
-Validator / Exporter
-        ↓
-Vendor-specific adaptation
+ST Draft Generation
