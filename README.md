@@ -1,208 +1,100 @@
-# PLC ST Draft Generator
+# PLC ST 설계 자동화 — 샘플 포트폴리오
 
-자연어 기반 사양(spec)과 IO 맵을 입력으로 받아  
-IEC 61131-3 Structured Text(ST) 제어 로직을 생성하는  
-PLC 설계 자동화 엔진 포트폴리오 프로젝트입니다.
+> \*\*스펙 문서 + IO 주소표 → IEC 61131-3 ST 코드\*\*  
+> 당일 초안 납품 가능합니다.
 
----
+\---
 
-## 프로젝트 개요
+## 이 저장소는 무엇인가
 
-본 프로젝트는 PLC 제어 로직을 사람이 직접 작성하는 방식에서 벗어나,  
-**자연어 기반 입력을 구조화하여 ST 코드로 변환하는 설계 자동화 엔진**을 구현하는 것을 목표로 합니다.
+본 저장소는 **자체 개발한 PLC ST 자동 생성 엔진의 출력 샘플**을 공개하는 포트폴리오입니다.
 
-단순 코드 생성기가 아니라,  
-설계 과정을 다음과 같은 단계로 분리하고 자동화한 구조를 가지고 있습니다.
+엔진 본체(생성 파이프라인, IR 구조, 레시피 시스템)는 비공개 자산입니다.  
+샘플 코드는 실제 엔진이 생성한 결과물입니다.
 
-- 자연어 사양(spec) 해석
-- IO 데이터 정규화
-- 중간 표현(IR) 기반 설계 구조 생성
-- 상태(State) / 전이(Transition) 기반 로직 구성
-- 인터락 / 타이머 / 알람 모델링
-- Structured Text(ST) 코드 생성
+\---
 
----
+## 생성 파이프라인 구조
 
-## 핵심 개념
+```
+자연어 사양 (spec.txt)
++ IO 주소표 (address.txt)
+        ↓
+   \[ 비공개 엔진 ]
+        ↓
+   IO 정규화 + IR 생성
+        ↓
+   상태머신 / 인터락 / 알람 / 타이머 구조 자동 구성
+        ↓
+   Validation (검증 실패 시 생성 차단)
+        ↓
+ST 코드 생성 + 미쓰비시 주소 변환
+        ↓
+   final\_output.st
+```
 
-본 프로젝트의 핵심은 다음 3가지입니다.
+\---
 
-### 1. 자연어 기반 설계 입력
+## 샘플 출력물
 
-- 사용자는 설비 요구사항을 자연어로 작성
-- 시스템이 이를 구조화 가능한 형태로 변환
+|파일|도메인|복잡도|주요 구현 내용|
+|-|-|-|-|
+|`Solenoid\_Valve.st`|유체 제어|SIMPLE|자동/수동 전환, 압력 인터락, 알람 래치|
+|`heater\_control.st`|열처리 공정|SIMPLE|아날로그 온도 제어, 과온 인터락, Fail-Safe|
+|`Multi\_Conveyor.st`|반송 설비|NORMAL|3대 동기 연동, Jam 타임아웃 래치, N.C 정지|
+|`Press\_Machine.st`|프레스 기계|COMPLEX|양수버튼 안전, 6상태 머신, 하강/상승 타임아웃|
+|`Heating\_Mixing\_Batch\_System.st`|식품/화학 공정|COMPLEX|3단 배치 시퀀스, 모드 전환 블랭킹, 분리 알람|
 
-### 2. Intermediate Representation (IR)
+\---
 
-- IO, 상태, 전이, 인터락, 타이머를 포함한 중간 설계 구조
-- PLC 코드 생성 이전 단계에서 로직을 명확하게 분리
-- 설계 → 코드 변환 과정의 재현성 확보
+## 자동 반영되는 안전 설계 항목
 
-### 3. 설계 → 코드 자동 변환
+모든 출력물에 아래 항목이 자동 구성됩니다.
 
-- IR을 기반으로 Structured Text(ST) 코드 생성
-- 반복적인 설계 및 코드 작성 과정 자동화
+* **Fail-Safe 출력 구조** — 기본값 차단 후 조건 만족 시에만 출력 활성화
+* **알람 래치 (Latch)** — 이상 발생 시 유지, reset 조건 만족 시에만 해제
+* **상태 머신 기반 설계** — IDLE / RUN / FAULT 등 명시적 상태 전이
+* **인터락 조건 분리** — estop, pressure, timeout 등 원인별 fault 분리
+* **AUTO / MANUAL 상호 배타** — 동시 활성 방지 및 전환 순간 출력 차단
 
----
+\---
 
-## 전체 구조 (Pipeline)
+## 지원 도메인 (60개)
 
-Spec (자연어 사양) / IO Map  
-↓  
-Input Parsing  
-↓  
-Normalization  
-↓  
-Intermediate Representation (IR)  
-↓  
-Validation  
-↓  
-ST Code Generation  
+### SIMPLE — 단일 장비 기본 제어
 
----
+Conveyor, Motor, Pump, Water Tank, Fan, Heater, Mixer, Valve, Lift, Compressor, Cylinder, Door, Alarm, Drum, Filter, Blower 외
 
-## 입력 방식
+### NORMAL — 인터락 / 상태 확장
 
-본 프로젝트는 다음 두 가지 입력을 사용합니다.
+Conveyor + Jam Detection, Pump 교번 운전, Mixing 공정, Boiler, 포장기, 냉각 순환, 세척 공정, Batch Tank, Dryer, Alarm + Reset + Latch 외
 
-### 1. 자연어 사양 (필수)
+### COMPLEX — 라인 / 공정 제어
 
-- 설비 동작 요구사항
-- 상태 흐름 및 제어 조건
+Multi Conveyor Line, 생산 라인 시퀀스, Tank+Pump+Valve 통합, Mixing+Heating+Discharge, 포장 라인, HVAC, 열처리 공정, Sorting Conveyor, 병입 공정, Safety Interlock 중심 시스템 외
 
-예:
-- "start 버튼 입력 시 모터 구동"
-- "jam 발생 시 fault 상태 전환"
+\---
 
-### 2. IO 맵 (선택)
+## 납품 방식
 
-- 엑셀/CSV 기반 신호 정의
-- 주소 매핑 및 신호 구조 보강
+|항목|내용|
+|-|-|
+|입력|자연어 사양서 + IO 주소표|
+|출력|ST 초안 + 미쓰비시 주소 변환본 + 주석 완료본|
+|납기|도메인 난이도에 따라 당일 \~ 익일|
+|대상|PLC 업체, 설비 제작사, 자동화 설계 외주|
 
----
+\---
 
-## 성능 (실무 기준)
+## 문의
 
-- 기존 PLC ST 설계: 수시간 ~ 반나절
-- 본 구조 적용 시: 평균 1~2시간 내 초안 생성 가능
+스펙 일부를 주시면 샘플 ST를 무상으로 생성해드립니다.  
+결과물로 판단해 주십시오.
 
-※ 설비 복잡도 및 요구사항에 따라 차이 발생
+📧 **deeodo@naver.com**
 
----
+\---
 
-## 지원 가능 도메인 (총 60개)
+> ※ `.st` 확장자는 IEC 61131-3 Structured Text 파일입니다. Smalltalk과 무관합니다.  
+> ※ 생성 엔진 및 파이프라인 코드는 비공개 자산입니다.
 
-다양한 산업 설비 기준으로 테스트 가능한 도메인 구성
-
----
-
-### SIMPLE (단일 장비 / 기본 제어)
-
-- Conveyor (기본)
-- Motor on/off 제어
-- Pump 자동/수동
-- Water tank 레벨 제어
-- Fan 제어
-- Heater on/off
-- Mixer (타이머 기반)
-- 조명 제어
-- Valve 개폐
-- Lift up/down
-- Compressor
-- 단일 배출 컨베이어
-- Drum 회전
-- Filter pump
-- Cooling fan
-- Air blower
-- Cylinder extend/retract
-- Door open/close
-- Alarm 트리거 시스템
-- Start 지연 타이머
-
----
-
-### NORMAL (인터락 / 상태 확장)
-
-- Conveyor + jam detection
-- Water tank 자동 충전
-- Pump 2대 교번 운전
-- Mixing 공정 (투입/혼합/배출)
-- Boiler 제어 (기본 로직)
-- 포장기 제어
-- Lift 다단 위치 제어
-- 냉각 순환 시스템
-- Air compressor 압력 제어
-- 세척 공정
-- Filter 역세척
-- 자동 게이트
-- Batch tank 충전
-- 단일 장비 사이클 제어
-- 안전 도어 인터락
-- Dryer 공정
-- 냉장/냉동 제어
-- 압력 릴리프 시스템
-- Conveyor 분기 제어
-- Alarm + Reset + Latch 구조
-
----
-
-### COMPLEX (라인 / 공정 제어)
-
-- Multi conveyor line
-- 생산 라인 시퀀스 제어
-- Tank + Pump + Valve 통합 제어
-- Mixing + Heating + Discharge
-- 포장 라인 제어
-- Multi pump priority 시스템
-- HVAC 시스템
-- 압축 공정 라인
-- 세척 + 건조 통합 시스템
-- Multi-level lift
-- 자동 창고 입출고 (기초)
-- Sorting conveyor 시스템
-- 충전 라인
-- 병입 공정 (Fill + Cap)
-- 열처리 공정
-- 검사 + Reject 시스템
-- 냉각수 순환 (multi loop)
-- 다중 탱크 동기화
-- Batch 공정 제어
-- Safety interlock 중심 시스템
-
----
-
-## 기술 구성
-
-- CSV / JSON 기반 IO 데이터 파싱
-- 자동 IO 정규화 처리
-- ProjectIR 기반 데이터 구조 설계
-- 상태(State) / 전이(Transition) 모델링
-- Timer / Interlock / Alarm 구조 정의
-- 코드 생성 파이프라인 구현
-
----
-
-## 제한 사항
-
-다음 영역은 현재 범위에 포함되지 않습니다.
-
-- PID 제어 (정밀 제어)
-- 로봇 경로 제어
-- 비전 시스템
-- 고정밀 동기 제어
-
----
-
-## 프로젝트 목적
-
-- PLC 설계 자동화 구조 구현
-- 자연어 기반 설계 → 코드 변환 흐름 검증
-- 재사용 가능한 설계 구조(IR) 실험
-- 실무 적용 가능성 검토 및 포트폴리오 활용
-
----
-
-## 참고
-
-본 프로젝트는 실무 투입용 완제품이 아닌,  
-PLC 설계 자동화 구조를 검증하기 위한 포트폴리오 프로젝트입니다.
