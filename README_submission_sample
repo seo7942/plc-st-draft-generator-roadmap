@@ -1,0 +1,35 @@
+LS/XGT PLC 자동 생성 테스트 제출용 패키지
+
+[개요]
+이 폴더는 자연어 수주서에서 LS/XGT용 ST 코드와 Ladder Draft를 생성한 결과물입니다.
+현재 Ladder Draft는 XG5000 import 전용 파일이 아니라, XGT에서 사람이 네트워크 단위로 수동 입력·검토하기 위한 설계서입니다.
+
+[핵심 흐름]
+자연어 수주서
+→ IO 자동 추출
+→ ProjectIR 생성
+→ Batch Recipe 적용
+→ LS/XGT ST 생성
+→ ProjectIR 기반 Ladder Draft 생성
+→ XGT 수동 입력/검증
+
+[포함 파일]
+- 20260503_215357_ls.st
+- 20260503_215357_ls_mapping.csv
+- 20260503_215357_ls_ladder.txt
+- 20260503_215357_ls_ladder_mapping.csv
+- xgt_flow_report_20260503_215357.txt
+- xgt_sample_spec_batch.txt
+- XGT_테스트_체크리스트.txt
+- README_제출용.txt
+
+[검토 포인트]
+1. *_ls.st: LS/XGT용 ST 초안
+2. *_ls_mapping.csv: IO 심볼과 X/Y/M/D 주소 매핑
+3. *_ls_ladder.txt: XGT 수동 입력용 Ladder Network Draft
+4. xgt_flow_report_*.txt: 생성 흐름 자동 점검 리포트
+5. xgt_sample_spec_batch.txt: 테스트 수주서 원문
+
+[현재 상태]
+PoC 1차 목적은 XG5000에서 직접 입력 가능한 래더 설계 검토와 LS/XGT ST 생성 확인입니다.
+다음 단계는 XG5000 import 가능 포맷 확인 후 자동 import 어댑터를 별도로 확장하는 것입니다.
