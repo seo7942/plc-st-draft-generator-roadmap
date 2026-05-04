@@ -1,0 +1,69 @@
+LS/XGT 3단 가열 혼합 Batch 공정 테스트 수주서
+
+[목적]
+이 문서는 자연어 수주서에서 IO를 추출하고,
+ProjectIR → LS/XGT ST → LS/XGT Ladder Draft까지 생성되는지 확인하기 위한 테스트 사양이다.
+
+[시스템 개요]
+액체 원료를 탱크에 투입한 뒤 가열, 교반, 배출, 세척을 순서대로 수행한다.
+AUTO 모드에서는 순차 자동 운전한다.
+MANUAL 모드에서는 각 장비를 개별 제어할 수 있으나 모든 안전 인터락은 항상 유효해야 한다.
+
+[입력 신호]
+- start button: start_pb
+- stop button: stop_pb
+- reset button: reset_pb
+- auto mode selector: auto_mode
+- manual mode selector: manual_mode
+- emergency stop normal signal: estop
+- low level sensor: level_low
+- high level sensor: level_high
+- over temperature sensor: over_temp
+- target temperature value: target_temp
+
+[출력 신호]
+- inlet valve open command: inlet_valve_open
+- feed pump run command: feed_pump_run
+- agitator run command: agitator_run
+- heater run command: heater_run
+- discharge valve open command: discharge_valve_open
+- wash valve open command: wash_valve_open
+- fault alarm output: alarm_fault
+
+[내부 신호]
+- alarm latched flag: alarm_latched
+- fill timeout flag: fill_timeout
+- mixing timeout flag: mixing_timeout
+- discharge timeout flag: discharge_timeout
+- fault active flag: fault_active
+- current state value: current_state
+
+[자동 운전 조건]
+1. start_pb가 입력되고 auto_mode가 ON이며 estop이 정상이고 alarm_latched가 FALSE이면 IDLE에서 FILLING으로 전이한다.
+2. FILLING 상태에서는 inlet_valve_open과 feed_pump_run이 ON된다.
+3. level_high가 감지되면 HEATING 상태로 전이한다.
+4. HEATING 상태에서는 agitator_run과 heater_run이 ON된다.
+5. heater_run은 level_low가 정상이고 over_temp가 없을 때만 허용한다.
+6. target_temp에 도달하면 MIXING 상태로 전이한다.
+7. MIXING 상태에서는 agitator_run을 유지한다.
+8. mixing_timeout이 완료되면 DISCHARGE 상태로 전이한다.
+9. DISCHARGE 상태에서는 discharge_valve_open이 ON되고 feed_pump_run은 금지된다.
+10. level_low가 감지되면 CLEANING 상태로 전이한다.
+11. CLEANING 상태에서는 wash_valve_open이 ON된다.
+12. discharge_timeout 완료 후 IDLE로 복귀한다.
+
+[안전 조건]
+1. estop 비정상 시 모든 출력은 OFF되어야 한다.
+2. over_temp 발생 시 heater_run은 즉시 OFF되고 FAULT로 전이한다.
+3. level_low 미만 조건에서는 heater_run이 금지된다.
+4. discharge_valve_open이 ON일 때 feed_pump_run은 금지된다.
+5. fill_timeout, mixing_timeout, discharge_timeout 발생 시 FAULT로 전이한다.
+6. FAULT 발생 시 alarm_fault를 ON한다.
+7. reset_pb 입력 시 alarm_latched를 해제할 수 있다.
+
+[검증 목표]
+- LS/XGT ST 파일이 생성되어야 한다.
+- LS/XGT Ladder Draft 파일이 생성되어야 한다.
+- Ladder Draft 안에 NETWORK 항목이 있어야 한다.
+- Ladder Draft 안에 BATCH OUTPUT 네트워크가 있어야 한다.
+- inlet_valve_open, feed_pump_run, agitator_run, heater_run, discharge_valve_open, wash_valve_open, alarm_fault 출력 조건이 보여야 한다.
