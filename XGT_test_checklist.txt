@@ -1,0 +1,60 @@
+XGT 테스트 체크리스트 v0.1
+
+[준비 파일]
+1. cli.py
+2. core/engine.py
+3. core/ladder_ir.py
+4. vendors/ls/adapter.py
+5. vendors/ls/ladder_adapter.py
+6. vendors/ls/__init__.py
+7. recipes/batch_control.py
+8. xgt_sample_spec_batch.txt
+9. test_xgt_flow.py
+
+[실행 순서]
+1. plc 루트 폴더에 파일 배치
+2. 터미널에서 아래 실행
+
+python test_xgt_flow.py
+
+[정상 생성물]
+outputs/날짜.st
+outputs/날짜_ls.st
+outputs/날짜_ls_mapping.csv
+outputs/날짜_ls_ladder.txt
+outputs/날짜_ls_ladder_mapping.csv
+outputs/xgt_flow_report_날짜.txt
+
+[합격 기준]
+1. validation error가 없어야 한다.
+2. _ls.st 파일이 생성되어야 한다.
+3. _ls_ladder.txt 파일이 생성되어야 한다.
+4. Ladder 파일에 NETWORK가 있어야 한다.
+5. Ladder 파일에 BATCH OUTPUT 네트워크가 있어야 한다.
+6. 7개 출력이 모두 확인되어야 한다.
+   - inlet_valve_open
+   - feed_pump_run
+   - agitator_run
+   - heater_run
+   - discharge_valve_open
+   - wash_valve_open
+   - alarm_fault
+
+[XGT 실테스트 관점]
+현재 ladder txt는 XG5000 자동 import 파일이 아니다.
+1차 목표는 XGT에서 사람이 네트워크를 보고 수동 입력 가능한 설계서다.
+실제 XGT에서 확인할 항목은 다음과 같다.
+
+1. X/Y/M/D 주소 매핑이 현실적으로 보이는가
+2. FILLING 상태에서 inlet/feed 출력이 살아나는가
+3. HEATING 상태에서 agitator/heater 출력이 살아나는가
+4. over_temp 시 heater가 차단되는가
+5. DISCHARGE 상태에서 discharge valve만 살아나는가
+6. CLEANING 상태에서 wash valve가 살아나는가
+7. fault 발생 시 alarm_fault가 살아나는가
+
+[다음 보강 후보]
+1. XGT import 가능 포맷 조사/확정
+2. LS XG5000에서 직접 받을 수 있는 CSV/XML/텍스트 형식 확인
+3. Ladder Draft를 실제 XG5000 입력형에 맞게 세분화
+4. 상태 전이용 MOV 네트워크와 출력 코일 네트워크 분리 강화
