@@ -1,0 +1,176 @@
+============================================================
+XGT FLOW TEST REPORT
+============================================================
+ROOT      : C:\Users\sky250213\Desktop\폴더\plc
+STARTED   : 2026-05-03 21:53:57
+
+[COMMAND]
+C:\Users\sky250213\AppData\Local\Programs\Python\Python312\python.exe cli.py --text-file C:\Users\sky250213\Desktop\폴더\plc\xgt_sample_spec_batch.txt --recipe batch_control --vendor ls --format both
+
+[STDOUT]
+NG 02 : [ state_current = STATE_MIXING ]
+         -> (OUT agitator_cmd)
+
+------------------------------------------------------------
+NETWORK 044
+TITLE   : DERIVED TAG discharge_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Discharge valve command
+META    : tag=discharge_cmd, expression=(state_current = STATE_DISCHARGE)
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ]
+         -> (OUT discharge_cmd)
+
+------------------------------------------------------------
+NETWORK 045
+TITLE   : DERIVED TAG wash_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Wash valve command
+META    : tag=wash_cmd, expression=(state_current = STATE_CLEANING)
+
+RUNG 01 : [ state_current = STATE_CLEANING ]
+         -> (OUT wash_cmd)
+
+------------------------------------------------------------
+NETWORK 046
+TITLE   : DERIVED TAG fault_summary
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Fault summary tag
+META    : tag=fault_summary, expression=over_temp OR fill_timeout OR mixing_timeout OR discharge_timeout
+
+RUNG 01 : [ X7 /* over_temp */ ]
+         -> (OUT fault_summary)
+RUNG 02 : [ M1 /* fill_timeout */ ]
+         -> (OUT fault_summary)
+RUNG 03 : [ M2 /* mixing_timeout */ ]
+         -> (OUT fault_summary)
+RUNG 04 : [ M3 /* discharge_timeout */ ]
+         -> (OUT fault_summary)
+
+------------------------------------------------------------
+NETWORK 047
+TITLE   : BATCH OUTPUT inlet_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FILLING    ¿                  ON
+META    : output=inlet_valve_open, condition=state_current = STATE_FILLING AND NOT fault_present_core, purpose=FILLING    ¿                  ON
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ fault_present_core ]
+         -> (OUT Y0 /* inlet_valve_open */)
+
+------------------------------------------------------------
+NETWORK 048
+TITLE   : BATCH OUTPUT feed_pump_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FILLING    ¿                   ON
+META    : output=feed_pump_run, condition=state_current = STATE_FILLING AND NOT fault_present_core, purpose=FILLING    ¿                   ON
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ fault_present_core ]
+         -> (OUT Y1 /* feed_pump_run */)
+
+------------------------------------------------------------
+NETWORK 049
+TITLE   : BATCH OUTPUT agitator_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : HEATING/MIXING    ¿       ݱ  ON
+META    : output=agitator_run, condition=(state_current = STATE_HEATING OR state_current = STATE_MIXING) AND NOT fault_present_core, purpose=HEATING/MIXING    ¿       ݱ  ON
+
+RUNG 01 : [ state_current = STATE_HEATING OR state_current = STATE_MIXING ] -- [/ fault_present_core ]
+         -> (OUT Y2 /* agitator_run */)
+
+------------------------------------------------------------
+NETWORK 050
+TITLE   : BATCH OUTPUT heater_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : HEATING    ¿            󡤰                   ON
+META    : output=heater_run, condition=state_current = STATE_HEATING AND level_low AND NOT over_temp AND NOT fault_present_core, purpose=HEATING    ¿            󡤰                   ON
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ X5 /* level_low */ ] -- [/ X7 /* over_temp */ ] -- [/ fault_present_core ]
+         -> (OUT Y3 /* heater_run */)
+
+------------------------------------------------------------
+NETWORK 051
+TITLE   : BATCH OUTPUT discharge_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : DISCHARGE    ¿             ON
+META    : output=discharge_valve_open, condition=state_current = STATE_DISCHARGE AND NOT fault_present_core, purpose=DISCHARGE    ¿             ON
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ] -- [/ fault_present_core ]
+         -> (OUT Y4 /* discharge_valve_open */)
+
+------------------------------------------------------------
+NETWORK 052
+TITLE   : BATCH OUTPUT wash_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : CLEANING    ¿      ô     ON
+META    : output=wash_valve_open, condition=state_current = STATE_CLEANING AND NOT fault_present_core, purpose=CLEANING    ¿      ô     ON
+
+RUNG 01 : [ state_current = STATE_CLEANING ] -- [/ fault_present_core ]
+         -> (OUT Y5 /* wash_valve_open */)
+
+------------------------------------------------------------
+NETWORK 053
+TITLE   : BATCH OUTPUT alarm_fault
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FAULT  Ǵ   ˶    ġ     溸     ON
+META    : output=alarm_fault, condition=fault_present_core OR alarm_latched, purpose=FAULT  Ǵ   ˶    ġ     溸     ON
+
+RUNG 01 : [ fault_present_core ]
+         -> (OUT Y6 /* alarm_fault */)
+RUNG 02 : [ M0 /* alarm_latched */ ]
+         -> (OUT Y6 /* alarm_fault */)
+
+============================================================
+END OF LS/XGT LADDER DRAFT
+============================================================
+
+
+[LS/XGT LADDER SAVED] outputs\20260503_215357_ls_ladder.txt
+[LS/XGT LADDER MAP SAVED] outputs\20260503_215357_ls_ladder_mapping.csv
+
+COMPLETE
+
+
+[NEW OUTPUT FILES]
+- 20260503_215357.st
+- 20260503_215357_ls.st
+- 20260503_215357_ls_ladder.txt
+- 20260503_215357_ls_ladder_mapping.csv
+- 20260503_215357_ls_mapping.csv
+
+[OK] LS/XGT ST 파일 생성
+[OK] LS/XGT Ladder Draft 파일 생성
+[OK] LS/XGT Mapping CSV 생성
+
+[LADDER FILE CHECK]
+FILE: C:\Users\sky250213\Desktop\폴더\plc\outputs\20260503_215357_ls_ladder.txt
+[OK] Ladder keyword 포함: LS/XGT LADDER DRAFT
+[OK] Ladder keyword 포함: DEVICE MAPPING
+[OK] Ladder keyword 포함: NETWORK
+[OK] Ladder keyword 포함: BATCH OUTPUT
+[OK] 출력명 포함: inlet_valve_open
+[OK] 출력명 포함: feed_pump_run
+[OK] 출력명 포함: agitator_run
+[OK] 출력명 포함: heater_run
+[OK] 출력명 포함: discharge_valve_open
+[OK] 출력명 포함: wash_valve_open
+[OK] 출력명 포함: alarm_fault
+[INFO] NETWORK COUNT: 54
+[OK] NETWORK 5개 이상
+
+[LS ST FILE CHECK]
+FILE: C:\Users\sky250213\Desktop\폴더\plc\outputs\20260503_215357_ls.st
+[OK] AUTO GENERATED LS/XGT OUTPUT LOGIC 포함
+
+============================================================
+RESULT: TEST FLOW FINISHED
+============================================================
