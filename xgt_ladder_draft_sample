@@ -1,0 +1,643 @@
+============================================================
+LS/XGT LADDER DRAFT v0.2
+============================================================
+PROJECT : auto_project
+TARGET  : LS ELECTRIC / XGT / XG5000
+FORMAT  : Manual Network Entry Draft
+STATUS  : XGT 수동 입력·검토용. import 전용 파일 아님.
+POLICY  : ProjectIR에서 직접 생성. ST 역파싱 아님.
+============================================================
+
+============================================================
+DEVICE MAPPING
+============================================================
+SYMBOL                         DEVICE
+------------------------------------------------------------
+start_pb                       X0
+reset_pb                       X1
+auto_mode                      X2
+manual_mode                    X3
+estop                          X4
+level_low                      X5
+level_high                     X6
+over_temp                      X7
+target_temp                    X8
+inlet_valve_open               Y0
+feed_pump_run                  Y1
+agitator_run                   Y2
+heater_run                     Y3
+discharge_valve_open           Y4
+wash_valve_open                Y5
+alarm_fault                    Y6
+alarm_latched                  M0
+fill_timeout                   M1
+mixing_timeout                 M2
+discharge_timeout              M3
+fault_active                   M4
+current_state                  D100
+
+============================================================
+NETWORK SUMMARY
+============================================================
+TOTAL NETWORKS : 53
+alarm           : 12
+derived         : 9
+interlock       : 5
+output          : 7
+safety          : 2
+transition      : 18
+
+------------------------------------------------------------
+NETWORK 001
+TITLE   : SAFETY ESTOP SUMMARY
+KIND    : safety
+SOURCE  : auto_safety_summary
+COMMENT : estop 비정상 시 fault_present_core 검토
+
+RUNG 01 : [/ X4 /* estop */ ]
+         -> (OUT fault_present_core)
+
+------------------------------------------------------------
+NETWORK 002
+TITLE   : SAFETY OVER TEMP SUMMARY
+KIND    : safety
+SOURCE  : auto_safety_summary
+COMMENT : over_temp 발생 시 fault_present_core 검토
+
+RUNG 01 : [ X7 /* over_temp */ ]
+         -> (OUT fault_present_core)
+
+------------------------------------------------------------
+NETWORK 003
+TITLE   : STATE TRANSITION IDLE TO FILLING
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 IDLE이고 조건 [start_pb AND auto_mode AND (NOT manual_mode) AND estop AND (NOT alarm_latched) AND level_low] 만족 시 FILLING로 전이
+META    : from_state=IDLE, to_state=FILLING, condition=start_pb AND auto_mode AND (NOT manual_mode) AND estop AND (NOT alarm_latched) AND level_low, priority=10
+
+RUNG 01 : [ state_current = STATE_IDLE ] -- [ X0 /* start_pb */ ] -- [ X2 /* auto_mode */ ] -- [/ X3 /* manual_mode */ ] -- [ X4 /* estop */ ] -- [/ M0 /* alarm_latched */ ] -- [ X5 /* level_low */ ]
+         -> (MOV STATE_FILLING -> state_next)
+
+------------------------------------------------------------
+NETWORK 004
+TITLE   : STATE TRANSITION FILLING TO HEATING
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 FILLING이고 조건 [level_high] 만족 시 HEATING로 전이
+META    : from_state=FILLING, to_state=HEATING, condition=level_high, priority=10
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [ X6 /* level_high */ ]
+         -> (MOV STATE_HEATING -> state_next)
+
+------------------------------------------------------------
+NETWORK 005
+TITLE   : STATE TRANSITION HEATING TO MIXING
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 HEATING이고 조건 [(target_temp > 0.0)] 만족 시 MIXING로 전이
+META    : from_state=HEATING, to_state=MIXING, condition=(target_temp > 0.0), priority=10
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ X8 > 0.0 /* target_temp > 0.0 */ ]
+         -> (MOV STATE_MIXING -> state_next)
+
+------------------------------------------------------------
+NETWORK 006
+TITLE   : STATE TRANSITION MIXING TO DISCHARGE
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 MIXING이고 조건 [mixing_timeout] 만족 시 DISCHARGE로 전이
+META    : from_state=MIXING, to_state=DISCHARGE, condition=mixing_timeout, priority=10
+
+RUNG 01 : [ state_current = STATE_MIXING ] -- [ M2 /* mixing_timeout */ ]
+         -> (MOV STATE_DISCHARGE -> state_next)
+
+------------------------------------------------------------
+NETWORK 007
+TITLE   : STATE TRANSITION DISCHARGE TO CLEANING
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 DISCHARGE이고 조건 [level_low] 만족 시 CLEANING로 전이
+META    : from_state=DISCHARGE, to_state=CLEANING, condition=level_low, priority=10
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ] -- [ X5 /* level_low */ ]
+         -> (MOV STATE_CLEANING -> state_next)
+
+------------------------------------------------------------
+NETWORK 008
+TITLE   : STATE TRANSITION CLEANING TO IDLE
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 CLEANING이고 조건 [discharge_timeout] 만족 시 IDLE로 전이
+META    : from_state=CLEANING, to_state=IDLE, condition=discharge_timeout, priority=10
+
+RUNG 01 : [ state_current = STATE_CLEANING ] -- [ M3 /* discharge_timeout */ ]
+         -> (MOV STATE_IDLE -> state_next)
+
+------------------------------------------------------------
+NETWORK 009
+TITLE   : STATE TRANSITION HEATING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 HEATING이고 조건 [over_temp] 만족 시 FAULT로 전이
+META    : from_state=HEATING, to_state=FAULT, condition=over_temp, priority=1
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ X7 /* over_temp */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 010
+TITLE   : STATE TRANSITION MIXING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 MIXING이고 조건 [over_temp] 만족 시 FAULT로 전이
+META    : from_state=MIXING, to_state=FAULT, condition=over_temp, priority=1
+
+RUNG 01 : [ state_current = STATE_MIXING ] -- [ X7 /* over_temp */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 011
+TITLE   : STATE TRANSITION FILLING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 FILLING이고 조건 [fill_timeout] 만족 시 FAULT로 전이
+META    : from_state=FILLING, to_state=FAULT, condition=fill_timeout, priority=2
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [ M1 /* fill_timeout */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 012
+TITLE   : STATE TRANSITION HEATING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 HEATING이고 조건 [mixing_timeout] 만족 시 FAULT로 전이
+META    : from_state=HEATING, to_state=FAULT, condition=mixing_timeout, priority=3
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ M2 /* mixing_timeout */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 013
+TITLE   : STATE TRANSITION DISCHARGE TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 DISCHARGE이고 조건 [discharge_timeout] 만족 시 FAULT로 전이
+META    : from_state=DISCHARGE, to_state=FAULT, condition=discharge_timeout, priority=3
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ] -- [ M3 /* discharge_timeout */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 014
+TITLE   : STATE TRANSITION IDLE TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 IDLE이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=IDLE, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_IDLE ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 015
+TITLE   : STATE TRANSITION FILLING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 FILLING이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=FILLING, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 016
+TITLE   : STATE TRANSITION HEATING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 HEATING이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=HEATING, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 017
+TITLE   : STATE TRANSITION MIXING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 MIXING이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=MIXING, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_MIXING ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 018
+TITLE   : STATE TRANSITION DISCHARGE TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 DISCHARGE이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=DISCHARGE, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 019
+TITLE   : STATE TRANSITION CLEANING TO FAULT
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 CLEANING이고 조건 [NOT estop] 만족 시 FAULT로 전이
+META    : from_state=CLEANING, to_state=FAULT, condition=NOT estop, priority=1
+
+RUNG 01 : [ state_current = STATE_CLEANING ] -- [/ X4 /* estop */ ]
+         -> (MOV STATE_FAULT -> state_next)
+
+------------------------------------------------------------
+NETWORK 020
+TITLE   : STATE TRANSITION FAULT TO IDLE
+KIND    : transition
+SOURCE  : ProjectIR.logic.transitions
+COMMENT : 현재 상태가 FAULT이고 조건 [reset_pb AND estop] 만족 시 IDLE로 전이
+META    : from_state=FAULT, to_state=IDLE, condition=reset_pb AND estop, priority=10
+
+RUNG 01 : [ state_current = STATE_FAULT ] -- [ X1 /* reset_pb */ ] -- [ X4 /* estop */ ]
+         -> (MOV STATE_IDLE -> state_next)
+
+------------------------------------------------------------
+NETWORK 021
+TITLE   : INTERLOCK estop_interlock
+KIND    : interlock
+SOURCE  : ProjectIR.logic.interlocks
+COMMENT : Emergency stop permissive
+META    : interlock=estop_interlock, severity=stop, condition=estop
+
+RUNG 01 : [ X4 /* estop */ ]
+         -> (OUT estop_interlock_active)
+
+------------------------------------------------------------
+NETWORK 022
+TITLE   : INTERLOCK heater_low_level_interlock
+KIND    : interlock
+SOURCE  : ProjectIR.logic.interlocks
+COMMENT : Heater allowed only when low level is secured
+META    : interlock=heater_low_level_interlock, severity=stop, condition=level_low
+
+RUNG 01 : [ X5 /* level_low */ ]
+         -> (OUT heater_low_level_interlock_active)
+
+------------------------------------------------------------
+NETWORK 023
+TITLE   : INTERLOCK overtemp_interlock
+KIND    : interlock
+SOURCE  : ProjectIR.logic.interlocks
+COMMENT : Over temperature protection
+META    : interlock=overtemp_interlock, severity=stop, condition=NOT over_temp
+
+RUNG 01 : [/ X7 /* over_temp */ ]
+         -> (OUT overtemp_interlock_active)
+
+------------------------------------------------------------
+NETWORK 024
+TITLE   : INTERLOCK feed_discharge_mutex
+KIND    : interlock
+SOURCE  : ProjectIR.logic.interlocks
+COMMENT : Feed pump blocked while discharge valve is open
+META    : interlock=feed_discharge_mutex, severity=stop, condition=NOT discharge_valve_open
+
+RUNG 01 : [/ Y4 /* discharge_valve_open */ ]
+         -> (OUT feed_discharge_mutex_active)
+
+------------------------------------------------------------
+NETWORK 025
+TITLE   : INTERLOCK mode_mutex
+KIND    : interlock
+SOURCE  : ProjectIR.logic.interlocks
+COMMENT : AUTO and MANUAL mode must not be active together
+META    : interlock=mode_mutex, severity=stop, condition=NOT (auto_mode AND manual_mode)
+
+RUNG 01 : [/ (X2 AND X3) /* (auto_mode AND manual_mode) */ ]
+         -> (OUT mode_mutex_active)
+
+------------------------------------------------------------
+NETWORK 026
+TITLE   : ALARM ACTIVE overtemp_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : Over temperature alarm
+META    : alarm=overtemp_alarm, mode=active, condition=over_temp
+
+RUNG 01 : [ X7 /* over_temp */ ]
+         -> (OUT overtemp_alarm_active)
+
+------------------------------------------------------------
+NETWORK 027
+TITLE   : ALARM LATCH SET overtemp_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch set
+META    : alarm=overtemp_alarm, mode=set, condition=over_temp
+
+RUNG 01 : [ X7 /* over_temp */ ]
+         -> (SET overtemp_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 028
+TITLE   : ALARM LATCH RESET overtemp_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch reset
+META    : alarm=overtemp_alarm, mode=reset, condition=reset_pb
+
+RUNG 01 : [ X1 /* reset_pb */ ]
+         -> (RST overtemp_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 029
+TITLE   : ALARM ACTIVE fill_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : Filling timeout alarm
+META    : alarm=fill_timeout_alarm, mode=active, condition=fill_timeout
+
+RUNG 01 : [ M1 /* fill_timeout */ ]
+         -> (OUT fill_timeout_alarm_active)
+
+------------------------------------------------------------
+NETWORK 030
+TITLE   : ALARM LATCH SET fill_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch set
+META    : alarm=fill_timeout_alarm, mode=set, condition=fill_timeout
+
+RUNG 01 : [ M1 /* fill_timeout */ ]
+         -> (SET fill_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 031
+TITLE   : ALARM LATCH RESET fill_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch reset
+META    : alarm=fill_timeout_alarm, mode=reset, condition=reset_pb
+
+RUNG 01 : [ X1 /* reset_pb */ ]
+         -> (RST fill_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 032
+TITLE   : ALARM ACTIVE mixing_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : Mixing timeout alarm
+META    : alarm=mixing_timeout_alarm, mode=active, condition=mixing_timeout
+
+RUNG 01 : [ M2 /* mixing_timeout */ ]
+         -> (OUT mixing_timeout_alarm_active)
+
+------------------------------------------------------------
+NETWORK 033
+TITLE   : ALARM LATCH SET mixing_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch set
+META    : alarm=mixing_timeout_alarm, mode=set, condition=mixing_timeout
+
+RUNG 01 : [ M2 /* mixing_timeout */ ]
+         -> (SET mixing_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 034
+TITLE   : ALARM LATCH RESET mixing_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch reset
+META    : alarm=mixing_timeout_alarm, mode=reset, condition=reset_pb
+
+RUNG 01 : [ X1 /* reset_pb */ ]
+         -> (RST mixing_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 035
+TITLE   : ALARM ACTIVE discharge_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : Discharge timeout alarm
+META    : alarm=discharge_timeout_alarm, mode=active, condition=discharge_timeout
+
+RUNG 01 : [ M3 /* discharge_timeout */ ]
+         -> (OUT discharge_timeout_alarm_active)
+
+------------------------------------------------------------
+NETWORK 036
+TITLE   : ALARM LATCH SET discharge_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch set
+META    : alarm=discharge_timeout_alarm, mode=set, condition=discharge_timeout
+
+RUNG 01 : [ M3 /* discharge_timeout */ ]
+         -> (SET discharge_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 037
+TITLE   : ALARM LATCH RESET discharge_timeout_alarm
+KIND    : alarm
+SOURCE  : ProjectIR.logic.alarms
+COMMENT : alarm latch reset
+META    : alarm=discharge_timeout_alarm, mode=reset, condition=reset_pb
+
+RUNG 01 : [ X1 /* reset_pb */ ]
+         -> (RST discharge_timeout_alarm_latched)
+
+------------------------------------------------------------
+NETWORK 038
+TITLE   : DERIVED TAG manual_override
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Manual mode active
+META    : tag=manual_override, expression=manual_mode
+
+RUNG 01 : [ X3 /* manual_mode */ ]
+         -> (OUT manual_override)
+
+------------------------------------------------------------
+NETWORK 039
+TITLE   : DERIVED TAG target_temp_reached
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Heating done condition for ST compile-safe transition
+META    : tag=target_temp_reached, expression=(target_temp > 0.0)
+
+RUNG 01 : [ X8 > 0.0 /* target_temp > 0.0 */ ]
+         -> (OUT target_temp_reached)
+
+------------------------------------------------------------
+NETWORK 040
+TITLE   : DERIVED TAG run_permissive
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Overall run permissive
+META    : tag=run_permissive, expression=estop AND (NOT over_temp) AND (NOT (auto_mode AND manual_mode))
+
+RUNG 01 : [ X4 /* estop */ ] -- [/ X7 /* over_temp */ ] -- [/ (X2 AND X3) /* (auto_mode AND manual_mode) */ ]
+         -> (OUT run_permissive)
+
+------------------------------------------------------------
+NETWORK 041
+TITLE   : DERIVED TAG feed_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Feed pump command
+META    : tag=feed_cmd, expression=(state_current = STATE_FILLING) AND (NOT level_high)
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ X6 /* level_high */ ]
+         -> (OUT feed_cmd)
+
+------------------------------------------------------------
+NETWORK 042
+TITLE   : DERIVED TAG heater_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Heater command
+META    : tag=heater_cmd, expression=(state_current = STATE_HEATING) AND level_low AND (NOT over_temp)
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ X5 /* level_low */ ] -- [/ X7 /* over_temp */ ]
+         -> (OUT heater_cmd)
+
+------------------------------------------------------------
+NETWORK 043
+TITLE   : DERIVED TAG agitator_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Agitator command
+META    : tag=agitator_cmd, expression=(state_current = STATE_HEATING) OR (state_current = STATE_MIXING)
+
+RUNG 01 : [ state_current = STATE_HEATING ]
+         -> (OUT agitator_cmd)
+RUNG 02 : [ state_current = STATE_MIXING ]
+         -> (OUT agitator_cmd)
+
+------------------------------------------------------------
+NETWORK 044
+TITLE   : DERIVED TAG discharge_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Discharge valve command
+META    : tag=discharge_cmd, expression=(state_current = STATE_DISCHARGE)
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ]
+         -> (OUT discharge_cmd)
+
+------------------------------------------------------------
+NETWORK 045
+TITLE   : DERIVED TAG wash_cmd
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Wash valve command
+META    : tag=wash_cmd, expression=(state_current = STATE_CLEANING)
+
+RUNG 01 : [ state_current = STATE_CLEANING ]
+         -> (OUT wash_cmd)
+
+------------------------------------------------------------
+NETWORK 046
+TITLE   : DERIVED TAG fault_summary
+KIND    : derived
+SOURCE  : ProjectIR.logic.derived_tags
+COMMENT : Fault summary tag
+META    : tag=fault_summary, expression=over_temp OR fill_timeout OR mixing_timeout OR discharge_timeout
+
+RUNG 01 : [ X7 /* over_temp */ ]
+         -> (OUT fault_summary)
+RUNG 02 : [ M1 /* fill_timeout */ ]
+         -> (OUT fault_summary)
+RUNG 03 : [ M2 /* mixing_timeout */ ]
+         -> (OUT fault_summary)
+RUNG 04 : [ M3 /* discharge_timeout */ ]
+         -> (OUT fault_summary)
+
+------------------------------------------------------------
+NETWORK 047
+TITLE   : BATCH OUTPUT inlet_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FILLING 상태에서 원료 투입 밸브 ON
+META    : output=inlet_valve_open, condition=state_current = STATE_FILLING AND NOT fault_present_core, purpose=FILLING 상태에서 원료 투입 밸브 ON
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ fault_present_core ]
+         -> (OUT Y0 /* inlet_valve_open */)
+
+------------------------------------------------------------
+NETWORK 048
+TITLE   : BATCH OUTPUT feed_pump_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FILLING 상태에서 원료 투입 펌프 ON
+META    : output=feed_pump_run, condition=state_current = STATE_FILLING AND NOT fault_present_core, purpose=FILLING 상태에서 원료 투입 펌프 ON
+
+RUNG 01 : [ state_current = STATE_FILLING ] -- [/ fault_present_core ]
+         -> (OUT Y1 /* feed_pump_run */)
+
+------------------------------------------------------------
+NETWORK 049
+TITLE   : BATCH OUTPUT agitator_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : HEATING/MIXING 상태에서 교반기 ON
+META    : output=agitator_run, condition=(state_current = STATE_HEATING OR state_current = STATE_MIXING) AND NOT fault_present_core, purpose=HEATING/MIXING 상태에서 교반기 ON
+
+RUNG 01 : [ state_current = STATE_HEATING OR state_current = STATE_MIXING ] -- [/ fault_present_core ]
+         -> (OUT Y2 /* agitator_run */)
+
+------------------------------------------------------------
+NETWORK 050
+TITLE   : BATCH OUTPUT heater_run
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : HEATING 상태에서 수위 정상·과열 없음일 때 히터 ON
+META    : output=heater_run, condition=state_current = STATE_HEATING AND level_low AND NOT over_temp AND NOT fault_present_core, purpose=HEATING 상태에서 수위 정상·과열 없음일 때 히터 ON
+
+RUNG 01 : [ state_current = STATE_HEATING ] -- [ X5 /* level_low */ ] -- [/ X7 /* over_temp */ ] -- [/ fault_present_core ]
+         -> (OUT Y3 /* heater_run */)
+
+------------------------------------------------------------
+NETWORK 051
+TITLE   : BATCH OUTPUT discharge_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : DISCHARGE 상태에서 배출 밸브 ON
+META    : output=discharge_valve_open, condition=state_current = STATE_DISCHARGE AND NOT fault_present_core, purpose=DISCHARGE 상태에서 배출 밸브 ON
+
+RUNG 01 : [ state_current = STATE_DISCHARGE ] -- [/ fault_present_core ]
+         -> (OUT Y4 /* discharge_valve_open */)
+
+------------------------------------------------------------
+NETWORK 052
+TITLE   : BATCH OUTPUT wash_valve_open
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : CLEANING 상태에서 세척 밸브 ON
+META    : output=wash_valve_open, condition=state_current = STATE_CLEANING AND NOT fault_present_core, purpose=CLEANING 상태에서 세척 밸브 ON
+
+RUNG 01 : [ state_current = STATE_CLEANING ] -- [/ fault_present_core ]
+         -> (OUT Y5 /* wash_valve_open */)
+
+------------------------------------------------------------
+NETWORK 053
+TITLE   : BATCH OUTPUT alarm_fault
+KIND    : output
+SOURCE  : batch_output_rule
+COMMENT : FAULT 또는 알람 래치 시 경보 출력 ON
+META    : output=alarm_fault, condition=fault_present_core OR alarm_latched, purpose=FAULT 또는 알람 래치 시 경보 출력 ON
+
+RUNG 01 : [ fault_present_core ]
+         -> (OUT Y6 /* alarm_fault */)
+RUNG 02 : [ M0 /* alarm_latched */ ]
+         -> (OUT Y6 /* alarm_fault */)
+
+============================================================
+END OF LS/XGT LADDER DRAFT
+============================================================
