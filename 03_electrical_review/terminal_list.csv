@@ -1,5 +1,0 @@
-﻿tb,range,description
-TB-DI-01,X000~X095,DI 단자대 후보
-TB-DO-01,Y000~Y047,DO 단자대 후보
-TB-AI-01,D100~D111,아날로그/데이터 태그 후보
-TB-SPARE,SPARE_*,"예비 채널, 미배선/검토용"

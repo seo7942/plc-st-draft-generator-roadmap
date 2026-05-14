@@ -57,44 +57,44 @@ IO List, HMI 태그, 알람표, 인터락표, ST/Ladder 초안,
 
 ```text
 README.md
-수주서.txt
+sample_order.txt
 
-01_io_hmi/
+01_summary/
+  package_summary.json
+
+02_io_hmi/
   io_list.csv
-  hmi_tag_table.csv
-  hmi_alarm_table.csv
+  hmi_tag_table_sample.csv
+  hmi_alarm_table_sample.csv
 
-02_logic_review/
-  checklist.md
-  interlock_alarm_report.csv
-  ladder_draft.md
+03_logic_review/
+  st_draft_sample.txt
+  ladder_draft_sample.md
   ladder_draft_visual.pdf
+  ladder_visual_qa_report.json
+  checklist.md
   risk_flags.md
-  st_draft.txt
 
-03_electrical_review/
-  bom.csv
-  rule_check_report.csv
-  terminal_list.csv
+04_electrical_review/
+  terminal_list_sample.csv
+  cable_list_sample.csv
+  bom_sample.csv
+  rule_check_report_sample.csv
 
-04_drawings/
-  drawing_qa_report.json
-  P00_FINAL_PACKAGE_INDEX.svg
-  P04_DO_001_020.pdf
+05_drawings/
+  P04_DO_001_020_sample.pdf
   P99_SAFETY_CIRCUIT_WIRING_CANDIDATE.svg
+  drawing_qa_report_sample.json
 
 05_xg5000_import_ready/
-  xg5000_import_checklist.md
+  xg5000_variable_description_import_sample.csv
   xg5000_import_ready_final_verdict.md
   xg5000_import_ready_manifest.json
-  xg5000_variable_description_import.csv
+  xg5000_import_checklist.md
 
-06_release_manifest/
-  package_qa_report.json
-
-screenshots/
-  K-001.jpg
-  K-002.jpg
+07_screenshots/
+  xg5000_import_success_001.png
+  xg5000_import_success_002.png
 ```
 
 ---
@@ -113,13 +113,13 @@ screenshots/
 - HMI 표시 후보
 - Spare IO
 - 설명문
-- XG5000 변수 설명 Import CSV
+- XG5000 반입용 변수 설명 CSV
 
 ---
 
 ### 5.2 XG5000 Import 후보 파일 생성
 
-XG5000에서 변수 설명 Import를 검토할 수 있는 CSV 후보 파일을 생성합니다.
+XG5000에서 변수 설명 Import를 시도할 수 있는 CSV 후보 파일을 생성합니다.
 
 포함 항목:
 
@@ -289,13 +289,22 @@ IO 목록을 기반으로 검토용 전장 도면 후보 PDF/SVG를 생성합니
 
 ---
 
-## 8. 공개 범위
+## 8. 본 저장소에 포함하지 않는 것
 
-본 저장소는 포트폴리오 검토용 산출물 샘플만 제공합니다.
+본 저장소에는 아래 항목을 포함하지 않습니다.
 
-엔진 원본, 내부 생성 절차, 비공개 설정값, 개발용 중간 산출물은 공개 범위에서 제외했습니다.
+- 원본 PLC Package JSON 전체
+- 도메인맵 원본
+- 스키마 원본
+- 생성기 원본 코드
+- 랩핑기 원본 코드
+- 어댑터 원본 코드
+- 내부 평가 로직
+- 전체 ZIP 원본
+- 백업 폴더
+- Turn별 내부 개발 리포트
 
-공개 목적은 구현 방식 설명이 아니라, 비정형 수주서 입력을 기준으로 어떤 검토용 PLC 설계 패키지가 구성되는지 보여주는 것입니다.
+이 저장소는 엔진 원본 공개가 아니라, 엔진이 생성한 검토용 산출물 샘플을 보여주기 위한 포트폴리오입니다.
 
 ---
 

@@ -1,5 +1,0 @@
-﻿check_id,check,status,note
-RULE-001,E-Stop / Safety signal human review,REVIEW,안전 신호는 실제 회로/안전릴레이/안전컨트롤러 구성을 엔지니어가 확인해야 합니다.
-RULE-002,Output mutual exclusion,REVIEW,동시 출력 금지 조건은 Ladder/ST/현장 배선 기준으로 재검수해야 합니다.
-RULE-003,Terminal / Cable numbering,REVIEW,단자대/케이블/와이어마커 번호는 후보값이며 실제 시공 기준 확정이 필요합니다.
-RULE-004,HMI manual control safety bypass,REVIEW,HMI 수동 조작은 PLC 안전 인터락을 우회하면 안 됩니다.
